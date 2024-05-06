@@ -2,18 +2,26 @@ const express = require("express");
 const app = express();
 
 //mongo db and dotenv stuff
-const {MongoClient} = require("mongodb");
 require("dotenv").config({path: "stuff.env"});
 
 //opens to cross origin
 const cors = require("cors");
 app.use(cors());
 
+//hashing
+const bcrypt = require("bcrypt");
+
+//JWT
+const jwt = require("jsonwebtoken");
+
 //express middleware to convert json to javascript objects, neat
 app.use(express.json());
 
 //prefered port or 27017
 const port = process.env.port | 27017;
+
+//salt generation for hashing, uses env file but converts it to number since all env files are string
+const salt = Number(process.env.salt);
 
 //database connection
 const url = process.env.DB_HOST + ":" + port + "/lab4";
@@ -34,6 +42,13 @@ const loginSchema = mongoose.Schema({
     email: String
 });
 
+//hashes password before adding it, have no clue why it says await does nothing when it clearly does something
+loginSchema.pre('save', async function(next){
+    this.password = await bcrypt.hash(this.password, salt); 
+    console.log(await bcrypt.hash(this.password, salt));
+    next()
+})
+
 //console log
 let apiPort = 3000;
 app.listen(apiPort, () => {console.log("listening")});
@@ -49,7 +64,15 @@ app.post("/login", async (req, res) => {
         return
     }
     val = await loginValidation(req);
-    res.send({message: "Confirmed Login"});
+    if (val) {
+        res.send({message: "Confirmed Login"});
+        const payload = {username: req.username};
+        const token = jwt.sign(payload, process.env.STANDARD_TOKEN, {expiresIn: '2h' })
+        res.send({message: "Confirmed Login"}, token);
+    }
+    else {
+        res.send({error: "Wrong password please try again"});
+    }
 })
 
 app.post("/register", async (req, res) => {
@@ -58,14 +81,15 @@ app.post("/register", async (req, res) => {
         res.send(test);
         return
     }
-    res.send({message: "account registered"});
+    res.send({message: "Account registered"});
 })
 
 async function loginValidation(obj) {
     let uname = obj.body.username;
     let password = obj.body.password;
     let user = await login.find({username: uname});
-    if (password == user[0].password) {
+    if (await bcrypt.compare(password, user[0].password)) {
+        console.log("Correct password for user: " + uname);
         return true;
     }
     else {
@@ -108,7 +132,7 @@ async function validate(obj, mode) {
             let logins = await login.find();
             for (let index = 0; index < logins.length; index++) {
                 if (obj.body.username == logins[index].username) {
-                    errors.push("That username is already in use")
+                    errors.push("Invalid username")
                 }  
             }
             if (!obj.body.name) {

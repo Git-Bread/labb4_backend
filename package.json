@@ -1,0 +1,19 @@
+{
+  "name": "labb4",
+  "version": "1.0.0",
+  "description": "Labb 4 backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "author": "Max Gagner (maga2101)",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "mongodb": "^6.6.0",
+    "mongoose": "^8.3.3",
+    "nodemon": "^3.1.0"
+  }
+}

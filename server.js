@@ -43,8 +43,13 @@ const login = mongoose.model("login", loginSchema);
 
 //Login
 app.post("/login", async (req, res) => {
-    loginValidation(req);
-    res.send();
+    let val = await validate(req, 1)
+    if (val != "") {
+        res.send(val);
+        return
+    }
+    val = await loginValidation(req);
+    res.send({message: "Confirmed Login"});
 })
 
 app.post("/register", async (req, res) => {
@@ -59,9 +64,12 @@ app.post("/register", async (req, res) => {
 async function loginValidation(obj) {
     let uname = obj.body.username;
     let password = obj.body.password;
-    let user = await login.find(username, uname);
-    if (password == user.password) {
-        console.log("IT TRUE");
+    let user = await login.find({username: uname});
+    if (password == user[0].password) {
+        return true;
+    }
+    else {
+        return false
     }
 }
 
@@ -77,16 +85,17 @@ async function register(obj){
         name: obj.body.name,
         email: obj.body.email
     });
-    //newUser.save();
+    newUser.save();
     return
 }
 
+//comprehensive validation
 async function validate(obj, mode) {
     let errors = [];
-    if (obj.body.username == "") {
+    if (!obj.body.username) {
         errors.push("No username")
     }
-    if (obj.body.password == "") {
+    if (!obj.body.password) {
         errors.push("No password")
     }
     switch (mode) {
@@ -102,22 +111,27 @@ async function validate(obj, mode) {
                     errors.push("That username is already in use")
                 }  
             }
+            if (!obj.body.name) {
+                errors.push("No name")
+            }
             if (obj.body.username.lenght > 12) {
                 errors.push("To long username")
             }
-            if (obj.body.name == "") {
-                errors.push("No name")
-            }
-            if (obj.body.username.lenght > 30) {
+            if (obj.body.name.lenght > 30) {
                 errors.push("To long name")
             }
-            if (obj.body.email == "") {
+            if (!obj.body.email) {
                 errors.push("No email")
             }
             const regex = /^[a-zA-Z0–9._-]+@[a-zA-Z0–9.-]+\.[a-zA-Z]{2,4}$/;
             let valid = regex.test(obj.body.email);
             if (!valid) {
                 errors.push("Invalid email")
+            }
+            for (let index = 0; index < logins.length; index++) {
+                if (obj.body.email == logins[index].email) {
+                    errors.push("That email is already in use")
+                }  
             }
             const passRegex = /^(?=.*[A-Z])(?=.*[0-9].*[0-9]).{6}$/
             valid = passRegex.test(obj.body.password)

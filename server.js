@@ -198,7 +198,7 @@ async function validate(obj, mode) {
     return false
 }
 
-//debug for testing auth, outprints all data
+//debug for testing auth, outprints all data in database provided proper token is supplied
 app.get("/secret", async (req, res) => {
     if(auth(req)){
         return res.status(200).send(await login.find());

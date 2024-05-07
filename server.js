@@ -58,36 +58,44 @@ const login = mongoose.model("login", loginSchema);
 
 //Login
 app.post("/login", async (req, res) => {
+    //validate for input errors
     let val = await validate(req, 1)
     if (val != "") {
-        res.send(val);
+        res.status(400).send(val);
         return
     }
+
+    //checks for correct information and returns auth token
     val = await loginValidation(req);
     if (val) {
-        res.send({message: "Confirmed Login"});
         const payload = {username: req.username};
         const token = jwt.sign(payload, process.env.STANDARD_TOKEN, {expiresIn: '2h' })
-        res.send({message: "Confirmed Login"}, token);
+        console.log(token);
+        res.status(200).send({message: "Confirmed Login", token: token});
     }
     else {
-        res.send({error: "Wrong password please try again"});
+        res.status(400).send({error: "Wrong password please try again"});
     }
 })
 
+//register acount
 app.post("/register", async (req, res) => {
+    //runs an extra function, this might be uneccesary
     let test = await register(req);
     if(test) {
-        res.send(test);
+        res.status(400).send(test);
         return
     }
-    res.send({message: "Account registered"});
+    res.status(200).send({message: "Account registered"});
 })
 
+//validates password
 async function loginValidation(obj) {
     let uname = obj.body.username;
     let password = obj.body.password;
     let user = await login.find({username: uname});
+
+    //hash compare
     if (await bcrypt.compare(password, user[0].password)) {
         console.log("Correct password for user: " + uname);
         return true;
@@ -97,11 +105,14 @@ async function loginValidation(obj) {
     }
 }
 
+//registration
 async function register(obj){
     let val = await validate(obj, 2)
     if(val != "") {
         return val;
     }
+
+    //new schema object
     let newUser = new login({
         username: obj.body.username,
         password: obj.body.password,
@@ -115,13 +126,18 @@ async function register(obj){
 
 //comprehensive validation
 async function validate(obj, mode) {
+    //holds all errors for comprehensive output
     let errors = [];
+
+    //checks for standard empty
     if (!obj.body.username) {
         errors.push("No username")
     }
     if (!obj.body.password) {
         errors.push("No password")
     }
+
+    //diffrent validation modes for login/register, more efficient with an if but this is more expandable, and a login system will be really easy to re-use for future projects
     switch (mode) {
         case 1:
             if (errors[0] != "") {
@@ -130,11 +146,15 @@ async function validate(obj, mode) {
         
         case 2:
             let logins = await login.find();
+
+            //compares usernames to check for duplicate, sort of bad praxis due to the whole "you know an account exists"
             for (let index = 0; index < logins.length; index++) {
                 if (obj.body.username == logins[index].username) {
                     errors.push("Invalid username")
                 }  
             }
+ 
+            //some lenght and "exist" checks
             if (!obj.body.name) {
                 errors.push("No name")
             }
@@ -147,22 +167,28 @@ async function validate(obj, mode) {
             if (!obj.body.email) {
                 errors.push("No email")
             }
+            //regex for email format, makes sure it is two parts and an @ aswell as an 2-4 ending such as .com
             const regex = /^[a-zA-Z0–9._-]+@[a-zA-Z0–9.-]+\.[a-zA-Z]{2,4}$/;
             let valid = regex.test(obj.body.email);
             if (!valid) {
                 errors.push("Invalid email")
             }
+            
+            //another kind of bad praxis, but cant have duplicate emails so whats to do about it
             for (let index = 0; index < logins.length; index++) {
                 if (obj.body.email == logins[index].email) {
-                    errors.push("That email is already in use")
+                    errors.push("That email is unavailable")
                 }  
             }
+                        
+            //makes sure password contains a capital letter, two numbers and atleast 6 symbols
             const passRegex = /^(?=.*[A-Z])(?=.*[0-9].*[0-9]).{6}$/
             valid = passRegex.test(obj.body.password)
             if (!valid) {
                 errors.push("password invalid, it needs to be atleast six symbols, one uppercase letter, two numbers")
             }
 
+            //sends all the errors back
             if (errors[0] != "") {
                 return errors;   
             }
@@ -172,7 +198,7 @@ async function validate(obj, mode) {
     return false
 }
 
-//DEBUG functions
+//DEBUG functions, comment out when done, if they are not commented out then it might become a dumpsterfire
 
 //gets all content
 app.get("/debug1", async (req, res) => {
@@ -182,3 +208,29 @@ app.get("/debug1", async (req, res) => {
 app.delete("/debug2", async (req, res) => {
     res.send(await login.deleteMany ({}));
 })
+//printtts
+app.get("/debug1", async (req, res) => {
+    res.send(await login.find());
+})
+//debug for testing auth
+app.get("/secret", async (req, res) => {
+    if(auth(req)){
+        return res.status(200).send(await login.find());
+    };
+    return res.status(403).send({boundry: "ACCESS DENIED"});
+})
+
+//token auth, in try catch so server dosent explode if invalid token is sent
+function auth(req) {
+    try {
+        const head = req.headers['authorization'];
+        const token = head && head.split(' ')[1]; //gets first space or Bearer TOKEN
+        if (token == null || token == undefined) {return false}
+        if(jwt.verify(token, process.env.STANDARD_TOKEN)) {
+            return true;
+        }
+        return false;   
+    } catch (error) {
+        return false;
+    }
+}

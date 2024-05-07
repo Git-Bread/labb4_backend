@@ -198,6 +198,15 @@ async function validate(obj, mode) {
     return false
 }
 
+//debug for testing auth, outprints all data
+app.get("/secret", async (req, res) => {
+    if(auth(req)){
+        return res.status(200).send(await login.find());
+    };
+    return res.status(403).send({boundry: "ACCESS DENIED"});
+})
+
+
 //DEBUG functions, comment out when done, if they are not commented out then it might become a dumpsterfire
 
 //gets all content
@@ -211,13 +220,6 @@ app.delete("/debug2", async (req, res) => {
 //printtts
 app.get("/debug1", async (req, res) => {
     res.send(await login.find());
-})
-//debug for testing auth
-app.get("/secret", async (req, res) => {
-    if(auth(req)){
-        return res.status(200).send(await login.find());
-    };
-    return res.status(403).send({boundry: "ACCESS DENIED"});
 })
 
 //token auth, in try catch so server dosent explode if invalid token is sent

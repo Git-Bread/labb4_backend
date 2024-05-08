@@ -61,7 +61,8 @@ app.post("/login", async (req, res) => {
     //validate for input errors
     let val = await validate(req, 1)
     if (val != "") {
-        res.status(400).send(val);
+        console.log(val);
+        res.status(400).send({error: val});
         return
     }
 
@@ -74,7 +75,7 @@ app.post("/login", async (req, res) => {
         res.status(200).send({message: "Confirmed Login", token: token});
     }
     else {
-        res.status(400).send({error: "Wrong password please try again"});
+        res.status(400).send({error: ["Wrong password please try again"]});
     }
 })
 
@@ -83,7 +84,7 @@ app.post("/register", async (req, res) => {
     //runs an extra function, this might be uneccesary
     let test = await register(req);
     if(test) {
-        res.status(400).send(test);
+        res.status(400).send({error: test});
         return
     }
     res.status(200).send({message: "Account registered"});
@@ -96,17 +97,23 @@ async function loginValidation(obj) {
     let user = await login.find({username: uname});
 
     //hash compare
-    if (await bcrypt.compare(password, user[0].password)) {
-        console.log("Correct password for user: " + uname);
-        return true;
-    }
-    else {
-        return false
+    try {
+        if (await bcrypt.compare(password, user[0].password)) {
+            console.log("Correct password for user: " + uname);
+            return true;
+        }
+        else {
+            return false
+        }   
+    } catch (error) {
+        console.log("it broke");
+        return false;
     }
 }
 
 //registration
 async function register(obj){
+    console.log(obj.body);
     let val = await validate(obj, 2)
     if(val != "") {
         return val;
@@ -137,16 +144,26 @@ async function validate(obj, mode) {
         errors.push("No password")
     }
 
+    let logins = await login.find();
+
     //diffrent validation modes for login/register, more efficient with an if but this is more expandable, and a login system will be really easy to re-use for future projects
     switch (mode) {
         case 1:
+            //checks if user exists
+            let match = false;
+            for (let index = 0; index < logins.length; index++) {
+                if (obj.body.username == logins[index].username) {
+                    match = true;
+                }
+            }
+            if (!match) {
+                errors.push("invalid username")
+            }
             if (errors[0] != "") {
                 return errors;   
             }
         
         case 2:
-            let logins = await login.find();
-
             //compares usernames to check for duplicate, sort of bad praxis due to the whole "you know an account exists"
             for (let index = 0; index < logins.length; index++) {
                 if (obj.body.username == logins[index].username) {
@@ -181,8 +198,8 @@ async function validate(obj, mode) {
                 }  
             }
                         
-            //makes sure password contains a capital letter, two numbers and atleast 6 symbols
-            const passRegex = /^(?=.*[A-Z])(?=.*[0-9].*[0-9]).{6}$/
+            //makes sure password contains a capital letter, one numbers and atleast 6 symbols
+            const passRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/
             valid = passRegex.test(obj.body.password)
             if (!valid) {
                 errors.push("password invalid, it needs to be atleast six symbols, one uppercase letter, two numbers")
@@ -201,14 +218,14 @@ async function validate(obj, mode) {
 //debug for testing auth, outprints all data in database provided proper token is supplied
 app.get("/secret", async (req, res) => {
     if(auth(req)){
-        return res.status(200).send(await login.find());
+        return res.status(200).send(true);
     };
     return res.status(403).send({boundry: "ACCESS DENIED"});
 })
 
 
 //DEBUG functions, comment out when done, if they are not commented out then it might become a dumpsterfire
-
+/*
 //gets all content
 app.get("/debug1", async (req, res) => {
     res.send(await login.find());
@@ -220,6 +237,16 @@ app.delete("/debug2", async (req, res) => {
 //printtts
 app.get("/debug1", async (req, res) => {
     res.send(await login.find());
+})
+*/
+
+
+app.post("/data", async (req, res) => {
+    console.log(req.body);
+    if (auth(req)) {
+        console.log(await login.find({username: req.username}))
+        res.send(await login.find({username: req.body.username}));   
+    }
 })
 
 //token auth, in try catch so server dosent explode if invalid token is sent

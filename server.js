@@ -241,10 +241,10 @@ app.get("/debug1", async (req, res) => {
 */
 
 
+
 app.post("/data", async (req, res) => {
     console.log(req.body);
     if (auth(req)) {
-        console.log(await login.find({username: req.username}))
         res.send(await login.find({username: req.body.username}));   
     }
 })

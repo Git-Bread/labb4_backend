@@ -6,6 +6,7 @@ Express databas med mongodb integration samt cors och json tokens kompatabilitet
 ### Skapnings Datum: Automatiskt lagrar dagens datum
 ### Namn: Individens Namn
 ### email: email i rätt format
+## validering
 Apin har grundläggande validering av inmatning och returnering av felvvärden i en array med formatet {error: array}. Databasen använder sig av en env fil för det mesta närverks relaterade informationen. Har ett antal debug operationer utan säkerhet som är utkomenterade.
 Har nedanstånde operationer:
 ## /login
@@ -17,5 +18,5 @@ Authentierar användaren baserat på skickat token, för att kunna verifiera inl
 ## /data
 Hämtar användarelaterat data efter en authentisering sker. Kräver att token skickas med i request huvudet samt användarnamnet som skickas ifrån localstorage.
 
-Utvärdering:
+## Utvärdering:
 Skapandet av apin gick bra och var inte så annorlunda ifrån tidigare uppgifter, tog lite läsning att förstå sig på jwt till en hyfsat nivå men tycker det hela har varit lärorikt. Det nämndes på genomgången att det fanns något bra sätt att skapa standardtokenen men kollade inte upp det så gjorde bara en extremt lång string i env filen.
